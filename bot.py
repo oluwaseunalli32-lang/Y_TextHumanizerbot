@@ -36,8 +36,9 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_chat_action(action="typing")
 
     try:
+        # Changed to the explicitly tracked production model name
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-1.5-flash-latest",
             system_instruction=(
                 "You are an expert human editor. Rewrite the user's text to make it sound "
                 "completely human, natural, and conversational. Remove typical AI structures, "
