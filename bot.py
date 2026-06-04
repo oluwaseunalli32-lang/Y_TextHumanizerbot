@@ -3,7 +3,7 @@ import logging
 import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-import google.generativeai as genai
+from google import genai
 
 # Enable logging
 logging.basicConfig(
@@ -15,9 +15,8 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-# Configure the Gemini API
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+# Initialize the universal Gemini Client
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Sends a welcome message when the command /start is issued."""
@@ -36,19 +35,22 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_chat_action(action="typing")
 
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-latest",
-            system_instruction=(
-                "You are an expert human editor. Rewrite the user's text to make it sound "
-                "completely human, natural, and conversational. Remove typical AI structures, "
-                "clichés, repetitive phrasing, and overly robotic transitions. Keep the original core "
-                "message, facts, and intent perfectly intact. Provide ONLY the final edited text."
-            )
+        # Build the system prompt rules right into the content text block to guarantee API route compatibility
+        full_prompt = (
+            "You are an expert human editor. Rewrite the following text to make it sound "
+            "completely human, natural, and conversational. Remove typical AI structures, "
+            "clichés, repetitive phrasing, and overly robotic transitions. Keep the original core "
+            "message, facts, and intent perfectly intact. Provide ONLY the final edited text.\n\n"
+            f"Original Text:\n{user_text}"
         )
 
-        response = model.generate_content(user_text)
-        humanized_text = response.text
+        # Call using the modern SDK layout
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=full_prompt,
+        )
         
+        humanized_text = response.text
         await update.message.reply_text(humanized_text)
 
     except Exception as e:
@@ -58,7 +60,7 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Start the bot with explicit event loop handling and update clearing."""
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
-        logger.error("Missing environment variables! Make sure TELEGRAM_TOKEN and GEMINI_API_KEY are in Render settings.")
+        logger.error("Missing environment variables!")
         return
 
     # Create the Telegram Application
@@ -79,8 +81,6 @@ def main() -> None:
 
     # Initialize and run the application
     loop.run_until_complete(application.initialize())
-    
-    # CRITICAL FIX: drop_pending_updates=True forces Telegram to drop old conflicting sessions
     loop.run_until_complete(application.updater.start_polling(drop_pending_updates=True))
     loop.run_until_complete(application.start())
     
