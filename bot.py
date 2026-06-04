@@ -3,7 +3,6 @@ import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from google import genai
-from google.genai import types
 
 # Enable logging
 logging.basicConfig(
@@ -35,19 +34,18 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_chat_action(action="typing")
 
     try:
-        # Prompt engineering to make Gemini behave like a text humanizer
+        # Build prompt guidelines directly into the content structure
+        prompt = (
+            "You are an expert human editor. Rewrite the following text to make it sound "
+            "completely human, natural, and conversational. Remove typical AI structures, "
+            "clichés, repetitive phrasing, and overly robotic transitions. Keep the original core "
+            "message, facts, and intent perfectly intact. Provide ONLY the final edited text.\n\n"
+            f"Original Text:\n{user_text}"
+        )
+
         response = client.models.generate_content(
             model='gemini-2.5-flash',
-            contents=user_text,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "You are an expert editor. Your task is to rewrite the user's text to make it sound "
-                    "completely human, natural, and conversational. Remove any typical AI phrasing, "
-                    "clichés, repetitive structures, or overly robotic transitions. Maintain the core "
-                    "message, facts, and intent of the original text, but make the flow flawless and engaging."
-                ),
-                temperature=0.7,
-            )
+            contents=prompt
         )
         
         humanized_text = response.text
