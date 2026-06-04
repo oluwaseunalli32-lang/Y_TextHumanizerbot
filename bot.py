@@ -36,7 +36,6 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_chat_action(action="typing")
 
     try:
-        # Changed to the explicitly tracked production model name
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash-latest",
             system_instruction=(
@@ -57,7 +56,7 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await update.message.reply_text("⚠️ Sorry, I encountered an error while rewriting your text. Please try again later.")
 
 def main() -> None:
-    """Start the bot with explicit event loop handling for newer Python environments."""
+    """Start the bot with explicit event loop handling and update clearing."""
     if not TELEGRAM_TOKEN or not GEMINI_API_KEY:
         logger.error("Missing environment variables! Make sure TELEGRAM_TOKEN and GEMINI_API_KEY are in Render settings.")
         return
@@ -78,14 +77,15 @@ def main() -> None:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-    # Initialize and run the application within the safe loop environment
+    # Initialize and run the application
     loop.run_until_complete(application.initialize())
-    loop.run_until_complete(application.updater.start_polling())
+    
+    # CRITICAL FIX: drop_pending_updates=True forces Telegram to drop old conflicting sessions
+    loop.run_until_complete(application.updater.start_polling(drop_pending_updates=True))
     loop.run_until_complete(application.start())
     
     logger.info("Bot is running and actively polling messages...")
     
-    # Keep the loop running until interrupted
     try:
         loop.run_forever()
     except (KeyboardInterrupt, SystemExit):
