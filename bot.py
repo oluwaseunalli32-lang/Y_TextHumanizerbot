@@ -35,7 +35,7 @@ async def humanize_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await update.message.reply_chat_action(action="typing")
 
     try:
-        # Build the system prompt rules right into the content text block to guarantee API route compatibility
+        # Build the system prompt rules right into the content text block
         full_prompt = (
             "You are an expert human editor. Rewrite the following text to make it sound "
             "completely human, natural, and conversational. Remove typical AI structures, "
